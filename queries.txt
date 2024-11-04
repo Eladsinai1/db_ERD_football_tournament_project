@@ -1,0 +1,74 @@
+SELECT e.first_name,e.last_name,e.job_title
+FROM game g JOIN team t on g.Home_team=t.team_number
+JOIN stadium_team st on st.team_number=g.Home_team
+JOIN stadiums s ON s.number=st.stadium_number
+JOIN employees e ON e.stadium_number=s.number
+WHERE g.date="2022-09-07"
+
+
+
+
+
+
+SELECT (t.name) AS team_name, s.first_name,s.last_name, o.equity
+FROM owner_staff o JOIN staff s ON o.owner_id=s.ID
+JOIN team t ON s.team_number=t.team_number
+WHERE o.equity>=ALL(SELECT o.equity
+                    FROM owner_staff o)
+
+
+
+
+
+
+SELECT sr.first_name,sr.last_name,sr.channel,COUNT(*) AS num_of_reviews
+FROM sport_reporter sr JOIN reviews r ON sr.id=r.reporter_id
+GROUP BY sr.id HAVING num_of_reviews=
+(SELECT max(temp.reporter_reviews) AS top_reviews
+FROM (SELECT sr.first_name,sr.last_name,sr.channel,COUNT(*) AS reporter_reviews
+FROM sport_reporter sr JOIN reviews r ON sr.id=r.reporter_id GROUP BY sr.id)AS temp)
+
+
+
+
+
+
+
+SELECT t.team_number , t.name
+FROM team t
+WHERE NOT EXISTS (SELECT s.name
+                 FROM stadiums s WHERE NOT EXISTS (SELECT * 
+                                  FROM stadium_team tm JOIN game g
+                                  ON tm.team_number=g.Home_team
+                                  WHERE t.team_number=g.visiting_team AND s.number=tm.stadium_number))
+
+
+
+
+
+
+
+
+
+
+
+SELECT wins1.team_number AS team_number,wins1.name, wins1.total_wins AS num_of_wins
+FROM (SELECT total_home.team_number,total_home.name,(COALESCE(total_home.home_wins, 0) + COALESCE(total_away.visit_wins, 0)) as total_wins
+FROM ((SELECT t.name,t.team_number,wins.Home_team,wins.home_wins
+FROM team t LEFT JOIN 
+(SELECT g.Home_team, COUNT(*) AS home_wins
+FROM game g WHERE g.resulte='win' GROUP BY g.Home_team) AS wins
+ON t.team_number=wins.Home_team) AS total_home JOIN
+(SELECT t.name,t.team_number,away_wins.visiting_team,away_wins.visit_wins
+FROM team t LEFT JOIN (SELECT g.visiting_team, COUNT(*) AS visit_wins
+FROM game g WHERE g.resulte='loss' GROUP BY g.visiting_team) AS away_wins 
+ON t.team_number=away_wins.visiting_team) total_away 
+ON total_home.team_number=total_away.team_number)) AS wins1
+where wins1.total_wins>=(SELECT  MAX(COALESCE(total_home.home_wins, 0) + COALESCE(total_away.visit_wins, 0))
+FROM ((SELECT t.team_number,wins.Home_team,wins.home_wins
+FROM team t LEFT JOIN (SELECT g.Home_team, COUNT(*) AS home_wins
+FROM game g WHERE g.resulte='win' GROUP BY g.Home_team) AS wins ON t.team_number=wins.Home_team) AS total_home JOIN
+(SELECT t.team_number,away_wins.visiting_team,away_wins.visit_wins
+FROM team t LEFT JOIN (SELECT g.visiting_team, COUNT(*) AS visit_wins
+FROM game g WHERE g.resulte='loss'
+GROUP BY g.visiting_team) AS away_wins ON t.team_number=away_wins.visiting_team) total_away ON total_home.team_number=total_away.team_number))
